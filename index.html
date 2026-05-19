@@ -107,6 +107,17 @@
 
   /* ---------- roll / attendance ---------- */
   .session-bar .row2{margin-bottom:0}
+  .save-row{display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap}
+  .save-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;
+    font-weight:700;padding:5px 11px;border-radius:20px;border:1px solid var(--line);
+    background:var(--card-2);color:var(--ink-soft);white-space:nowrap}
+  .save-chip i{width:7px;height:7px;border-radius:50%;background:currentColor;
+    display:inline-block;flex:none}
+  .save-chip.saving{background:var(--late-bg);color:var(--late);border-color:#E8D29A}
+  .save-chip.saved{background:var(--present-bg);color:var(--present);border-color:#B9D9BE}
+  .save-chip.flash{animation:savepop .55s ease}
+  @keyframes savepop{0%{transform:scale(1)}35%{transform:scale(1.07)}100%{transform:scale(1)}}
+  .sess-note{font-size:11.5px;color:var(--ink-faint)}
   .tally{display:flex;gap:5px;margin:12px 0 4px}
   .tally .t{flex:1;text-align:center;border-radius:9px;padding:7px 3px;
     border:1px solid var(--line-soft)}
@@ -317,7 +328,10 @@
               </select>
             </label>
           </div>
-          <div id="s-status" class="fab-note" style="margin-top:8px"></div>
+          <div class="save-row">
+            <span id="save-chip" class="save-chip"><i></i>Marks save automatically</span>
+            <span id="s-status" class="sess-note"></span>
+          </div>
         </div>
       </div>
 
@@ -339,7 +353,7 @@
         <div id="roll-list"></div>
       </div>
 
-      <p class="fab-note" id="save-note">Every tap is saved automatically. Safe to close or refresh. ✓</p>
+      <p class="fab-note" id="save-note">There's no save button because every tap is stored instantly. The green "Saved" stamp above updates each time, so you can always see it worked.</p>
       <p class="fab-note">P on time, L late, E excused, A absent. Tap <b>LE</b> to add "left early" on top of P or L. 15-min grace from start time, per the constitution.</p>
     </section>
 
@@ -568,6 +582,7 @@ async function load(){
 async function save(){
   const ok=await save._do();
   if(!ok)toast('Could not save on this device');
+  return ok;
 }
 save._do=()=>Store.set(KEY,JSON.stringify(state));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -633,8 +648,11 @@ function initSession(){
   syncRoll();
 }
 function autoType(){
-  const d=new Date(document.getElementById('s-date').value+'T00:00').getDay();
   const sel=document.getElementById('s-type');
+  // keep only the rehearsal types in step with the weekday — never
+  // overwrite a deliberate Performance / Assembly / Other choice
+  if(sel.value!=='Tuesday Rehearsal'&&sel.value!=='Friday Rehearsal')return;
+  const d=new Date(document.getElementById('s-date').value+'T00:00').getDay();
   if(d===2)sel.value='Tuesday Rehearsal';
   else if(d===5)sel.value='Friday Rehearsal';
 }
@@ -645,13 +663,25 @@ function syncRoll(){
   const ex=state.sessions.find(s=>s.date===date&&s.type===type);
   roll=ex?cloneRoll(ex.records):{};
   rollStatus();
+  if(ex&&Object.keys(roll).length)setSaveChip('saved','Saved earlier');
+  else setSaveChip('','Marks save automatically');
   renderRoll();
 }
 function rollStatus(){
   const n=Object.keys(roll).length;
+  const dEl=document.getElementById('s-date');
+  const lbl=dEl.value?new Date(dEl.value+'T00:00').toLocaleDateString('en-GB',
+    {weekday:'long',day:'numeric',month:'short'}):'this date';
   document.getElementById('s-status').textContent= n
-    ? n+' member'+(n>1?'s':'')+' marked. Saved automatically. ✓'
-    : 'New session. Your marks save as you tap. ✓';
+    ? n+' marked for '+lbl
+    : 'No marks yet for '+lbl;
+}
+function setSaveChip(cls,text){
+  const c=document.getElementById('save-chip');
+  if(!c)return;
+  c.className='save-chip '+cls;
+  c.innerHTML='<i></i>'+text;
+  if(cls==='saved'){ c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
 }
 function renderRoll(){
   const list=document.getElementById('roll-list');
@@ -723,6 +753,7 @@ async function autosaveRoll(){
   const date=document.getElementById('s-date').value;
   const type=document.getElementById('s-type').value;
   if(!date)return;
+  setSaveChip('saving','Saving…');
   const idx=state.sessions.findIndex(s=>s.date===date&&s.type===type);
   if(Object.keys(roll).length===0){
     if(idx>=0)state.sessions.splice(idx,1);
@@ -733,7 +764,9 @@ async function autosaveRoll(){
   }
   state.ui={date,type};
   rollStatus();
-  await save();
+  const ok=await save();
+  setSaveChip(ok?'saved':'saving',
+    ok?'Saved '+new Date().toLocaleTimeString():'Save failed — retry');
 }
 
 /* =========================================================
