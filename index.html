@@ -374,7 +374,16 @@
         </div>
         <div id="report-list"></div>
       </div>
-      <button class="btn teal" onclick="printReport()">Save / print attendance report</button>
+      <div class="card">
+        <div class="card-head"><h3>Share with the executives</h3></div>
+        <div class="card-pad">
+          <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink-soft)">
+            A clean spreadsheet anyone can open in Excel or Google Sheets, grouped by
+            voice part using the choir's usual P / L / E / U marks. No app access needed.</p>
+          <button class="btn" onclick="exportExcel()">Export attendance spreadsheet (.xlsx)</button>
+          <button class="btn teal" style="margin-top:9px" onclick="printReport()">Save as PDF instead</button>
+        </div>
+      </div>
       <div class="card" style="margin-top:13px">
         <div class="card-head"><h3>Data backup</h3></div>
         <div class="card-pad">
@@ -1042,6 +1051,126 @@ function printReport(){
       <th>Attendance</th><th>Audition</th>
     </tr></thead><tbody>${rows}</tbody></table>`;
   setTimeout(()=>window.print(),120);
+}
+
+/* ---------- export to spreadsheet (Excel) ----------
+   Mirrors the choir's long-standing layout: a grid grouped by voice
+   part, marks P / L / E / U (U = absent / unexcused). */
+let _xlsxLoad=null;
+function loadXLSX(){
+  if(window.XLSX)return Promise.resolve(true);
+  if(_xlsxLoad)return _xlsxLoad;
+  _xlsxLoad=new Promise(res=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>res(true); s.onerror=()=>res(false);
+    document.head.appendChild(s);
+  });
+  return _xlsxLoad;
+}
+function exDate(s){
+  const base=new Date(s.date+'T00:00').toLocaleDateString('en-GB',
+    {weekday:'short',day:'numeric',month:'short'});
+  if(s.type==='Performance')return base+' (Performance)';
+  if(s.type==='General Assembly')return base+' (Assembly)';
+  return base;
+}
+function attendanceMatrix(){
+  const sessions=[...state.sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  const MARK={p:'P',l:'L',e:'E',a:'U'};
+  const head=['Member',...sessions.map(exDate),'Attended','Attendance %'];
+  const aoa=[
+    ['ALU Choir — Attendance Register'],
+    ['Generated '+new Date().toLocaleDateString('en-GB',
+      {day:'numeric',month:'long',year:'numeric'})],
+    ['Key:   P = Present     L = Late     E = Excused absence     U = Absent (unexcused)'],
+    [],
+    head
+  ];
+  PARTS.forEach(part=>{
+    const mem=state.members.filter(m=>m.part===part)
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    if(!mem.length)return;
+    aoa.push([part.toUpperCase()]);
+    mem.forEach(m=>{
+      const st=memberStats(m.id);
+      const row=[m.name];
+      sessions.forEach(s=>row.push(s.records[m.id]?MARK[s.records[m.id]]:''));
+      row.push(st.p+st.l);
+      row.push(st.total?st.pct+'%':'—');
+      aoa.push(row);
+    });
+    aoa.push([]);
+  });
+  return {aoa,cols:head.length,dates:sessions.length};
+}
+async function exportExcel(){
+  if(!state.members.length){toast('Add members first');return;}
+  toast('Preparing spreadsheet…');
+  const ok=await loadXLSX();
+  if(!ok||!window.XLSX){exportCSV();return;}
+  const stamp='Generated '+new Date().toLocaleDateString('en-GB',
+    {day:'numeric',month:'long',year:'numeric'});
+  const wb=XLSX.utils.book_new();
+
+  /* Attendance matrix */
+  const M=attendanceMatrix();
+  const ws=XLSX.utils.aoa_to_sheet(M.aoa);
+  ws['!cols']=[{wch:28}].concat(
+    Array.from({length:M.dates},()=>({wch:12})),[{wch:10},{wch:13}]);
+  ws['!merges']=[0,1,2].map(r=>({s:{r,c:0},e:{r,c:M.cols-1}}));
+  XLSX.utils.book_append_sheet(wb,ws,'Attendance');
+
+  /* Member summary */
+  const sum=[['ALU Choir — Member Summary'],[stamp],[],
+    ['Member','Voice part','Status','Sessions','On time','Late',
+     'Excused','Absent','Attendance %','Audition status']];
+  [...state.members].sort((a,b)=>
+    a.part.localeCompare(b.part)||memberStats(b.id).pct-memberStats(a.id).pct
+  ).forEach(m=>{
+    const st=memberStats(m.id);
+    sum.push([m.name,m.part,m.status,st.total,st.p,st.l,st.e,st.a,
+      st.total?st.pct+'%':'—',
+      st.total?(st.eligible?'Eligible':'Below 80%'):'No sessions yet']);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(sum);
+  ws2['!cols']=[{wch:28},{wch:12},{wch:11},{wch:9},{wch:9},{wch:7},
+    {wch:9},{wch:9},{wch:14},{wch:15}];
+  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:9}}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Summary');
+
+  /* Conduct log — only if there is anything to show */
+  if(state.incidents.length){
+    const con=[['ALU Choir — Conduct Log'],[stamp],[],
+      ['Date','Member','Category','Sanction','Notes']];
+    [...state.incidents].sort((a,b)=>a.date.localeCompare(b.date)).forEach(x=>{
+      const m=state.members.find(mm=>mm.id===x.memberId);
+      con.push([new Date(x.date+'T00:00').toLocaleDateString('en-GB',
+        {day:'numeric',month:'short',year:'numeric'}),
+        m?m.name:'(removed member)',x.category,x.sanction,x.note||'']);
+    });
+    const ws3=XLSX.utils.aoa_to_sheet(con);
+    ws3['!cols']=[{wch:16},{wch:24},{wch:22},{wch:20},{wch:42}];
+    ws3['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:4}}));
+    XLSX.utils.book_append_sheet(wb,ws3,'Conduct');
+  }
+
+  XLSX.writeFile(wb,'ALU Choir Attendance '+todayISO()+'.xlsx');
+  toast('Spreadsheet exported ✓');
+}
+/* offline fallback — plain CSV of the attendance matrix */
+function exportCSV(){
+  const M=attendanceMatrix();
+  const csv=M.aoa.map(r=>r.map(c=>{
+    const s=(c==null?'':String(c));
+    return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(',')).join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='ALU Choir Attendance '+todayISO()+'.csv';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('Saved as CSV (works offline)');
 }
 
 /* ---------- backup / restore ---------- */
