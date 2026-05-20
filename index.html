@@ -118,6 +118,20 @@
   .save-chip.flash{animation:savepop .55s ease}
   @keyframes savepop{0%{transform:scale(1)}35%{transform:scale(1.07)}100%{transform:scale(1)}}
   .sess-note{font-size:11.5px;color:var(--ink-faint)}
+
+  /* search input shared between Roll and Members tabs */
+  .search{position:relative;margin-bottom:11px}
+  .search .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    width:15px;height:15px;color:var(--ink-faint);pointer-events:none}
+  .search input{width:100%;padding:10px 36px;border:1px solid var(--line);
+    border-radius:10px;background:#fff;font-size:14px;color:var(--ink)}
+  .search input:focus{outline:2px solid var(--maroon-soft);border-color:var(--maroon)}
+  .search input::-webkit-search-cancel-button,
+  .search input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+  .search .clear{position:absolute;right:7px;top:50%;transform:translateY(-50%);
+    width:26px;height:26px;border-radius:50%;color:var(--ink-soft);
+    font-size:18px;line-height:1;display:none;background:var(--card-2)}
+  .search.has-text .clear{display:grid;place-items:center}
   .tally{display:flex;gap:5px;margin:12px 0 4px}
   .tally .t{flex:1;text-align:center;border-radius:9px;padding:7px 3px;
     border:1px solid var(--line-soft)}
@@ -349,6 +363,14 @@
         <button class="btn subtle sm" onclick="markAll(null)">Clear</button>
       </div>
 
+      <div class="search" id="roll-search">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="search" id="roll-search-input" placeholder="Search by name"
+          oninput="setFilter('roll',this.value)">
+        <button class="clear" onclick="clearFilter('roll')" aria-label="Clear search">&times;</button>
+      </div>
       <div class="card">
         <div id="roll-list"></div>
       </div>
@@ -366,6 +388,14 @@
       <div class="row2" style="margin-bottom:13px">
         <button class="btn ghost" style="flex:1" onclick="openMember()">+ Add member</button>
         <button class="btn teal" style="flex:1" onclick="openImport()">Import list</button>
+      </div>
+      <div class="search" id="members-search">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="search" id="members-search-input" placeholder="Search by name"
+          oninput="setFilter('members',this.value)">
+        <button class="clear" onclick="clearFilter('members')" aria-label="Clear search">&times;</button>
       </div>
       <div class="card"><div id="member-list"></div></div>
     </section>
@@ -398,8 +428,13 @@
         <div class="card-head"><h3>Share with the executives</h3></div>
         <div class="card-pad">
           <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink-soft)">
-            A clean spreadsheet anyone can open in Excel or Google Sheets, grouped by
-            voice part using the choir's usual P / L / E / U marks. No app access needed.</p>
+            Spreadsheet in the choir's familiar format. Anyone with Excel or Google Sheets
+            can open it, no app access needed.</p>
+          <label class="fld" style="margin-bottom:11px">
+            <span>Music Director (shown on the report)</span>
+            <input type="text" id="md-name" placeholder="e.g. Bryan Aurel Bakongo Bwemou"
+              oninput="setMusicDirector(this.value)">
+          </label>
           <button class="btn" onclick="exportExcel()">Export attendance spreadsheet (.xlsx)</button>
           <button class="btn teal" style="margin-top:9px" onclick="printReport()">Save as PDF instead</button>
         </div>
@@ -533,10 +568,28 @@ const CATEGORIES=['Lateness','Disrespect / conduct','Absence without notice','Dr
 const PASS_MARK=0.80;        // 80% attendance for audition eligibility
 const PROBATION_TARGET=4;    // consecutive rehearsals
 
-let state={members:[],sessions:[],incidents:[],ui:null};
+let state={members:[],sessions:[],incidents:[],ui:null,settings:{}};
 let roll={};                 // {memberId: 'p'|'l'|'e'|'a'}
 let editingMemberId=null;
 let importQueue=[];
+const filters={roll:'',members:''};
+
+function setFilter(which,val){
+  filters[which]=val.trim().toLowerCase();
+  const wrap=document.getElementById(which+'-search');
+  if(wrap)wrap.classList.toggle('has-text', val.length>0);
+  if(which==='roll')renderRoll();
+  else if(which==='members')renderMembers();
+}
+function clearFilter(which){
+  const inp=document.getElementById(which+'-search-input');
+  if(inp)inp.value='';
+  setFilter(which,'');
+}
+function matchMember(m,q){
+  if(!q)return true;
+  return m.name.toLowerCase().includes(q) || (m.part||'').toLowerCase().includes(q);
+}
 
 /* ---------- storage ----------
    Saves to the browser's own localStorage so data survives refreshes
@@ -567,6 +620,7 @@ async function load(){
       state.sessions=d.sessions||[];
       state.incidents=d.incidents||[];
       state.ui=d.ui||null;
+      state.settings=d.settings||{};
       // normalise every mark to {s, le} so old data keeps working
       state.sessions.forEach(sess=>{
         const rec=sess.records||{};
@@ -689,7 +743,13 @@ function renderRoll(){
     list.innerHTML=emptyBlock('No members yet','Add the choir on the Members tab first.');
     updateTally();return;
   }
-  const sorted=[...state.members].sort((a,b)=>a.name.localeCompare(b.name));
+  const q=filters.roll;
+  const sorted=[...state.members].sort((a,b)=>a.name.localeCompare(b.name))
+    .filter(m=>matchMember(m,q));
+  if(!sorted.length){
+    list.innerHTML=`<div class="empty"><p>No members match "<b>${esc(q)}</b>".</p></div>`;
+    updateTally();return;
+  }
   list.innerHTML=sorted.map(m=>{
     const r=roll[m.id]||null, st=r?r.s:null;
     const sb=(code,lab)=>`<button class="mk ${code} ${st===code?'on':''}"
@@ -774,13 +834,21 @@ async function autosaveRoll(){
    ========================================================= */
 function renderMembers(){
   const list=document.getElementById('member-list');
+  const q=filters.members;
+  const total=state.members.length;
+  const sorted=[...state.members].sort((a,b)=>a.name.localeCompare(b.name))
+    .filter(m=>matchMember(m,q));
   document.getElementById('mem-count').innerHTML=
-    state.members.length+' member'+(state.members.length===1?'':'s');
-  if(!state.members.length){
+    q ? sorted.length+' of '+total+' shown'
+      : total+' member'+(total===1?'':'s');
+  if(!total){
     list.innerHTML=emptyBlock('No members yet','Tap "Add a member" to build your roster.');
     return;
   }
-  const sorted=[...state.members].sort((a,b)=>a.name.localeCompare(b.name));
+  if(!sorted.length){
+    list.innerHTML=`<div class="empty"><p>No members match "<b>${esc(q)}</b>".</p></div>`;
+    return;
+  }
   list.innerHTML=sorted.map((m,i)=>{
     const st=memberStats(m.id);
     const probTxt=m.status==='Probation'
@@ -1179,54 +1247,137 @@ function exDate(s){
   if(s.type==='General Assembly')return base+' (Assembly)';
   return base;
 }
-function attendanceMatrix(){
+function attendanceReport(){
   const sessions=[...state.sessions].sort((a,b)=>a.date.localeCompare(b.date));
   const STAT={p:'P',l:'L',e:'E',a:'U'};
   const cell=r=>r?((STAT[r.s]||'')+(r.le?' LE':'')):'';
-  const head=['Member',...sessions.map(exDate),'Attended','Attendance %'];
-  const aoa=[
-    ['ALU Choir — Attendance Register'],
-    ['Generated '+new Date().toLocaleDateString('en-GB',
-      {day:'numeric',month:'long',year:'numeric'})],
-    ['Key:   P = Present     L = Late     E = Excused absence     U = Absent (unexcused)     LE = also left early'],
-    [],
-    head
-  ];
+  const director=(state.settings&&state.settings.musicDirector)||'';
+  const dates=sessions.map(s=>new Date(s.date+'T00:00'));
+
+  const aoa=[];
+  // Header band: "Music Director" + dates, then director's name + dates
+  aoa.push(['Music Director',...dates]);
+  aoa.push([director,...dates]);
+
   PARTS.forEach(part=>{
     const mem=state.members.filter(m=>m.part===part)
       .sort((a,b)=>a.name.localeCompare(b.name));
     if(!mem.length)return;
-    aoa.push([part.toUpperCase()]);
-    mem.forEach(m=>{
-      const st=memberStats(m.id);
-      const row=[m.name];
+    // Section header row: part name + event labels in their date columns
+    const sec=[part.toUpperCase()];
+    sessions.forEach(s=>{
+      if(s.type==='Performance')sec.push('Performance');
+      else if(s.type==='General Assembly')sec.push('Assembly');
+      else sec.push('');
+    });
+    aoa.push(sec);
+    // Numbered members within the part
+    mem.forEach((m,i)=>{
+      const row=[(i+1)+'-'+m.name];
       sessions.forEach(s=>row.push(cell(s.records[m.id])));
-      row.push(st.attended);
-      row.push(st.total?st.pct+'%':'—');
       aoa.push(row);
     });
-    aoa.push([]);
+    aoa.push([]); // breathing room before next section
   });
-  return {aoa,cols:head.length,dates:sessions.length};
+  return {aoa,dateCount:sessions.length};
+}
+
+function rankingReport(){
+  const total=state.sessions.length;
+  if(!total||!state.members.length)return null;
+  // tier helper based on attended-rate, with EXCUSED override
+  function tierOf(st){
+    if(!st.total)return '';
+    const att=st.attended/st.total;            // present + late
+    const exc=st.e/st.total;
+    if(att<0.5&&exc>=0.5)return 'EXCUSED';
+    if(att===1)return 'Perfect score';
+    if(att>=0.90)return 'Excellent score';
+    if(att>=0.80)return 'Very good score';
+    if(att>=0.70)return 'Good score';
+    if(att>=0.50)return 'Bad score';
+    return 'Very bad score';
+  }
+  function ord(n){
+    const s=['th','st','nd','rd'], v=n%100;
+    return n+(s[(v-20)%10]||s[v]||s[0]);
+  }
+  const ranked=state.members.map(m=>({m,st:memberStats(m.id)}))
+    .sort((a,b)=>b.st.attended-a.st.attended||b.st.pct-a.st.pct);
+  // per-part ranking — rebuilt once members are globally sorted
+  const partRank={};
+  PARTS.forEach(part=>{
+    const inPart=ranked.filter(x=>x.m.part===part);
+    inPart.forEach((x,i)=>{ partRank[x.m.id]=(i+1)+' ('+part+')'; });
+  });
+  const aoa=[
+    ['LEGEND','','SCORE /'+total,'GENERAL RANKING','PART RANKING','Names'],
+    []
+  ];
+  ranked.forEach((x,i)=>{
+    aoa.push([
+      tierOf(x.st),
+      ord(i+1),
+      x.st.attended,
+      i+1,
+      partRank[x.m.id]||'',
+      x.m.name
+    ]);
+  });
+  return {aoa};
+}
+
+function attendanceKeySheet(){
+  return [
+    ['ATTENDANCE KEY'],
+    [],
+    ['P','Present'],
+    ['L','Late'],
+    ['E','Excused absence'],
+    ['U','Unexcused absence'],
+    ['LE','Also left early (appears alongside P or L)']
+  ];
+}
+
+function setMusicDirector(v){
+  state.settings=state.settings||{};
+  state.settings.musicDirector=v;
+  save();
 }
 async function exportExcel(){
   if(!state.members.length){toast('Add members first');return;}
+  if(!state.sessions.length){toast('No sessions yet — take a roll first');return;}
   toast('Preparing spreadsheet…');
   const ok=await loadXLSX();
   if(!ok||!window.XLSX){exportCSV();return;}
-  const stamp='Generated '+new Date().toLocaleDateString('en-GB',
-    {day:'numeric',month:'long',year:'numeric'});
   const wb=XLSX.utils.book_new();
 
-  /* Attendance matrix */
-  const M=attendanceMatrix();
-  const ws=XLSX.utils.aoa_to_sheet(M.aoa);
-  ws['!cols']=[{wch:28}].concat(
-    Array.from({length:M.dates},()=>({wch:12})),[{wch:10},{wch:13}]);
-  ws['!merges']=[0,1,2].map(r=>({s:{r,c:0},e:{r,c:M.cols-1}}));
-  XLSX.utils.book_append_sheet(wb,ws,'Attendance');
+  /* ---------- Attendance Report (the choir's familiar layout) ---------- */
+  const R=attendanceReport();
+  const wsR=XLSX.utils.aoa_to_sheet(R.aoa,{cellDates:true});
+  // mark the date cells in the header band so Excel formats them as dates
+  for(let r=0;r<=1;r++){
+    for(let c=1;c<=R.dateCount;c++){
+      const addr=XLSX.utils.encode_cell({r,c});
+      if(wsR[addr]&&wsR[addr].v instanceof Date){
+        wsR[addr].t='d'; wsR[addr].z='dd-mmm-yy';
+      }
+    }
+  }
+  wsR['!cols']=[{wch:32},...Array.from({length:R.dateCount},()=>({wch:11}))];
+  XLSX.utils.book_append_sheet(wb,wsR,'Attendance Report');
 
-  /* Member summary */
+  /* ---------- Ranking Report ---------- */
+  const RR=rankingReport();
+  if(RR){
+    const wsK=XLSX.utils.aoa_to_sheet(RR.aoa);
+    wsK['!cols']=[{wch:17},{wch:9},{wch:11},{wch:17},{wch:14},{wch:30}];
+    XLSX.utils.book_append_sheet(wb,wsK,'Ranking Report');
+  }
+
+  /* ---------- Member Summary (full per-member breakdown) ---------- */
+  const stamp='Generated '+new Date().toLocaleDateString('en-GB',
+    {day:'numeric',month:'long',year:'numeric'});
   const sum=[['ALU Choir — Member Summary'],[stamp],[],
     ['Member','Voice part','Status','Sessions','On time','Late',
      'Left early','Excused','Absent','Attendance %','Audition status']];
@@ -1244,7 +1395,7 @@ async function exportExcel(){
   ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:10}}));
   XLSX.utils.book_append_sheet(wb,ws2,'Summary');
 
-  /* Conduct log — only if there is anything to show */
+  /* ---------- Conduct log — only if there is anything to show ---------- */
   if(state.incidents.length){
     const con=[['ALU Choir — Conduct Log'],[stamp],[],
       ['Date','Member','Category','Sanction','Notes']];
@@ -1260,13 +1411,24 @@ async function exportExcel(){
     XLSX.utils.book_append_sheet(wb,ws3,'Conduct');
   }
 
-  XLSX.writeFile(wb,'ALU Choir Attendance '+todayISO()+'.xlsx');
+  /* ---------- Attendance Key (its own tab, like the choir's template) ---------- */
+  const wsKey=XLSX.utils.aoa_to_sheet(attendanceKeySheet());
+  wsKey['!cols']=[{wch:6},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,wsKey,'Attendance Key');
+
+  XLSX.writeFile(wb,'ALU Choir Attendance Report '+todayISO()+'.xlsx');
   toast('Spreadsheet exported ✓');
 }
-/* offline fallback — plain CSV of the attendance matrix */
+/* offline fallback — plain CSV of the attendance report */
 function exportCSV(){
-  const M=attendanceMatrix();
-  const csv=M.aoa.map(r=>r.map(c=>{
+  const R=attendanceReport();
+  // Convert Dates to readable strings for CSV
+  const aoa=R.aoa.map(r=>r.map(c=>{
+    if(c instanceof Date)return c.toLocaleDateString('en-GB',
+      {day:'numeric',month:'short',year:'numeric'});
+    return c;
+  }));
+  const csv=aoa.map(r=>r.map(c=>{
     const s=(c==null?'':String(c));
     return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
   }).join(',')).join('\r\n');
@@ -1331,5 +1493,8 @@ document.getElementById('s-type').addEventListener('change',()=>{
   await load();
   initSession();
   renderMembers();
+  // restore the Music Director name in the Reports tab input
+  const md=document.getElementById('md-name');
+  if(md&&state.settings&&state.settings.musicDirector) md.value=state.settings.musicDirector;
 })();
 </script>
