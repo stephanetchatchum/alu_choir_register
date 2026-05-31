@@ -419,6 +419,14 @@
         <div class="hint">Attendance &amp;<br>eligibility</div>
       </div>
       <div class="stat-grid" id="stat-grid"></div>
+      <div class="search" id="reports-search">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="search" id="reports-search-input" placeholder="Search by name"
+          oninput="setFilter('reports',this.value)">
+        <button class="clear" onclick="clearFilter('reports')" aria-label="Clear search">&times;</button>
+      </div>
       <div class="card">
         <div class="card-head">
           <h3>Member standing</h3>
@@ -573,7 +581,7 @@ let state={members:[],sessions:[],incidents:[],ui:null,settings:{}};
 let roll={};                 // {memberId: 'p'|'l'|'e'|'a'}
 let editingMemberId=null;
 let importQueue=[];
-const filters={roll:'',members:''};
+const filters={roll:'',members:'',reports:''};
 
 function setFilter(which,val){
   filters[which]=val.trim().toLowerCase();
@@ -581,6 +589,7 @@ function setFilter(which,val){
   if(wrap)wrap.classList.toggle('has-text', val.length>0);
   if(which==='roll')renderRoll();
   else if(which==='members')renderMembers();
+  else if(which==='reports')renderReports();
 }
 function clearFilter(which){
   const inp=document.getElementById(which+'-search-input');
@@ -884,6 +893,10 @@ function openMember(id){
         <option ${m&&m.status==='Probation'?'selected':''}>Probation</option>
         <option ${m&&m.status==='Official'?'selected':''}>Official</option>
       </select></label>
+    <label class="fld"><span>Joined the choir on</span>
+      <input type="date" id="m-joined" value="${m&&m.joined?m.joined:todayISO()}">
+      <small style="color:var(--ink-faint);font-size:11px">Attendance is counted from this date. Backdate for existing members you forgot to add.</small>
+    </label>
     <button class="btn" onclick="saveMember()">${m?'Save changes':'Add member'}</button>
     ${m?`<button class="btn subtle" style="margin-top:9px" onclick="removeMember('${m.id}')">
         Remove from choir</button>`:''}
@@ -895,13 +908,14 @@ async function saveMember(){
   if(!name){toast('Enter a name');return;}
   const part=document.getElementById('m-part').value;
   const status=document.getElementById('m-status').value;
+  const joined=document.getElementById('m-joined').value||todayISO();
   if(editingMemberId){
     const m=state.members.find(x=>x.id===editingMemberId);
-    m.name=name;m.part=part;m.status=status;
+    m.name=name;m.part=part;m.status=status;m.joined=joined;
   }else{
-    state.members.push({id:uid(),name,part,status,joined:todayISO()});
+    state.members.push({id:uid(),name,part,status,joined});
   }
-  await save();closeSheet();renderMembers();toast('Saved ✓');
+  await save();closeSheet();renderMembers();renderReports();toast('Saved ✓');
 }
 async function removeMember(id){
   if(!confirm('Remove this member? Their past attendance records stay in saved sessions.'))return;
@@ -1019,11 +1033,24 @@ async function runImport(){
 }
 
 /* ---------- per-member statistics ---------- */
+/* effective join date: the member's own joined value, or a fallback
+   to their earliest recorded session so old data behaves sensibly. */
+function effectiveJoinDate(member){
+  if(member&&member.joined)return member.joined;
+  if(!member)return '9999-12-31';
+  const dates=state.sessions.filter(s=>s.records[member.id])
+    .map(s=>s.date).sort();
+  return dates[0]||'9999-12-31';
+}
 function memberStats(id){
-  const recs=state.sessions
-    .filter(s=>s.records[id])
-    .sort((a,b)=>a.date.localeCompare(b.date))
-    .map(s=>s.records[id]);
+  const member=state.members.find(m=>m.id===id);
+  const joined=effectiveJoinDate(member);
+  // every session on or after the join date counts; an unmarked session
+  // means the member existed but wasn't present, so it counts as Absent
+  const sessions=state.sessions
+    .filter(s=>s.date>=joined)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const recs=sessions.map(s=>s.records[id]||{s:'a',le:false});
   const total=recs.length;
   let p=0,l=0,e=0,a=0,x=0;
   recs.forEach(r=>{
@@ -1039,8 +1066,10 @@ function memberStats(id){
   for(let i=recs.length-1;i>=0;i--){
     if(recs[i].s==='p'||recs[i].s==='l')streak++; else break;
   }
+  // "mostly excused" flag — visible heads-up for excuse patterns
+  const mostlyExcused=total>=3&&(e/total)>=0.4;
   const incidents=state.incidents.filter(it=>it.memberId===id).length;
-  return {total,p,l,e,a,x,pct,counted,streak,incidents,
+  return {total,p,l,e,a,x,pct,counted,streak,incidents,mostlyExcused,
     attended:p+l,eligible:total>0&&pct>=PASS_MARK*100};
 }
 
@@ -1158,7 +1187,13 @@ function renderReports(){
     list.innerHTML=emptyBlock('Nothing to report yet','Add members and log a session.');
     return;
   }
-  const sorted=stats.sort((a,b)=>b.s.pct-a.s.pct);
+  const q=filters.reports;
+  const sorted=stats.sort((a,b)=>b.s.pct-a.s.pct)
+    .filter(({m})=>matchMember(m,q));
+  if(!sorted.length){
+    list.innerHTML=`<div class="empty"><p>No members match "<b>${esc(q)}</b>".</p></div>`;
+    return;
+  }
   list.innerHTML=sorted.map(({m,s})=>{
     if(!s.total){
       return `<div class="rep-row"><div class="rep-top">
@@ -1176,6 +1211,7 @@ function renderReports(){
           <div class="rep-meta">
             <span class="chip">${esc(m.part)}</span>
             <span class="badge ${good?'ok':'warn'}">${good?'Audition eligible':'Below 80%'}</span>
+            ${s.mostlyExcused?`<span class="badge probation">Mostly excused</span>`:''}
           </div>
         </div>
         <div class="pct ${good?'good':'bad'}">${s.pct}%</div>
@@ -1253,7 +1289,12 @@ function exDate(s){
 function attendanceReport(){
   const sessions=[...state.sessions].sort((a,b)=>a.date.localeCompare(b.date));
   const STAT={p:'P',l:'L',e:'E',a:'U'};
-  const cell=r=>r?((STAT[r.s]||'')+(r.le?' LE':'')):'';
+  // cell shows the explicit mark if present; otherwise U if the session is
+  // on or after the member's join date (they were a member then), else blank
+  const cell=(r,joined,sessionDate)=>{
+    if(r)return (STAT[r.s]||'')+(r.le?' LE':'');
+    return sessionDate>=joined?'U':'';
+  };
   const director=(state.settings&&state.settings.musicDirector)||'';
   const dates=sessions.map(s=>new Date(s.date+'T00:00'));
 
@@ -1279,8 +1320,9 @@ function attendanceReport(){
     aoa.push(sec);
     // Numbered members within the part
     mem.forEach((m,i)=>{
+      const joined=effectiveJoinDate(m);
       const row=['',(i+1)+'-'+m.name];
-      sessions.forEach(s=>row.push(cell(s.records[m.id])));
+      sessions.forEach(s=>row.push(cell(s.records[m.id],joined,s.date)));
       aoa.push(row);
     });
     aoa.push([]); // breathing room before next section
