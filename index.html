@@ -336,8 +336,7 @@
             <label class="fld" style="margin:0">
               <span>Session</span>
               <select id="s-type">
-                <option>Tuesday Rehearsal</option>
-                <option>Friday Rehearsal</option>
+                <option>Rehearsal</option>
                 <option>Performance</option>
                 <option>General Assembly</option>
                 <option>Other</option>
@@ -623,6 +622,10 @@ async function load(){
       state.incidents=d.incidents||[];
       state.ui=d.ui||null;
       state.settings=d.settings||{};
+      // older sessions used "Tuesday Rehearsal" / "Friday Rehearsal" — fold those into "Rehearsal"
+      const fix=t=>(t==='Tuesday Rehearsal'||t==='Friday Rehearsal')?'Rehearsal':t;
+      state.sessions.forEach(s=>{ if(s.type)s.type=fix(s.type); });
+      if(state.ui&&state.ui.type)state.ui.type=fix(state.ui.type);
       // normalise every mark to {s, le} so old data keeps working
       state.sessions.forEach(sess=>{
         const rec=sess.records||{};
@@ -699,18 +702,8 @@ function initSession(){
     if(state.ui.type)tEl.value=state.ui.type;
   }else{
     dEl.value=todayISO();
-    autoType();
   }
   syncRoll();
-}
-function autoType(){
-  const sel=document.getElementById('s-type');
-  // keep only the rehearsal types in step with the weekday — never
-  // overwrite a deliberate Performance / Assembly / Other choice
-  if(sel.value!=='Tuesday Rehearsal'&&sel.value!=='Friday Rehearsal')return;
-  const d=new Date(document.getElementById('s-date').value+'T00:00').getDay();
-  if(d===2)sel.value='Tuesday Rehearsal';
-  else if(d===5)sel.value='Friday Rehearsal';
 }
 /* load existing session for this date+type if one exists, else fresh */
 function syncRoll(){
@@ -1499,7 +1492,7 @@ async function rememberSession(){
   await save();
 }
 document.getElementById('s-date').addEventListener('change',()=>{
-  autoType();syncRoll();rememberSession();});
+  syncRoll();rememberSession();});
 document.getElementById('s-type').addEventListener('change',()=>{
   syncRoll();rememberSession();});
 
