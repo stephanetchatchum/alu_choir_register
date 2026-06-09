@@ -376,6 +376,8 @@
         <div id="roll-list"></div>
       </div>
 
+      <button class="btn teal" onclick="shareDailyRoll()" style="margin-top:4px">Share today's roll to the group</button>
+
       <p class="fab-note" id="save-note">There's no save button because every tap is stored instantly. The green "Saved" stamp above updates each time, so you can always see it worked.</p>
       <p class="fab-note">P on time, L late, E excused, A absent. Tap <b>LE</b> to add "left early" on top of P or L. 15-min grace from start time, per the constitution.</p>
     </section>
@@ -432,6 +434,18 @@
           <h3>Member standing</h3>
         </div>
         <div id="report-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Fees for unexcused absences</h3></div>
+        <div class="card-pad">
+          <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink-soft)">
+            Set the amount each unexcused absence costs an official member. Each member's running total appears on their report.</p>
+          <label class="fld" style="margin:0">
+            <span>Amount per unexcused absence (RWF)</span>
+            <input type="number" id="fee-amount" min="0" placeholder="0 to disable"
+              oninput="setFeeAmount(this.value)">
+          </label>
+        </div>
       </div>
       <div class="card">
         <div class="card-head"><h3>Share with the executives</h3></div>
@@ -833,6 +847,66 @@ async function autosaveRoll(){
     ok?'Saved '+new Date().toLocaleTimeString():'Save failed — retry');
 }
 
+/* ---------- daily roll: shareable message for the choir group ---------- */
+async function shareDailyRoll(){
+  const date=document.getElementById('s-date').value;
+  const type=document.getElementById('s-type').value;
+  if(!date){toast('No date selected');return;}
+  if(Object.keys(roll).length===0){toast('Mark some members first');return;}
+
+  const dateStr=new Date(date+'T00:00').toLocaleDateString('en-GB',
+    {weekday:'long',day:'numeric',month:'long'});
+  const STAT_TXT={p:'Present',l:'Late',e:'Excused absence',a:'Unexcused absence'};
+
+  let msg='🎶 *ALU Choir Attendance*\n'+dateStr+' · '+type+'\n\n';
+  const tot={p:0,l:0,e:0,a:0,x:0};
+
+  PARTS.forEach(part=>{
+    const mem=state.members.filter(m=>m.part===part&&roll[m.id])
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    if(!mem.length)return;
+    msg+='*'+part.toUpperCase()+'*\n';
+    mem.forEach(m=>{
+      const r=roll[m.id];
+      const label=STAT_TXT[r.s]||'';
+      msg+='• '+m.name+': '+label+(r.le?' (left early)':'')+'\n';
+      if(tot[r.s]!=null)tot[r.s]++;
+      if(r.le)tot.x++;
+    });
+    msg+='\n';
+  });
+
+  msg+='———\nPresent: '+tot.p+' · Late: '+tot.l+' · Excused: '+tot.e+' · Unexcused: '+tot.a;
+  if(tot.x)msg+=' · Left early: '+tot.x;
+
+  // count members who exist now and weren't marked (heads-up only)
+  const unmarked=state.members.filter(m=>!roll[m.id]).length;
+  if(unmarked>0)msg+='\n\n_('+unmarked+' member'+(unmarked>1?'s':'')+' not yet marked, please update before sharing)_';
+
+  // try mobile native share first, then clipboard, then a copyable modal
+  if(navigator.share){
+    try{await navigator.share({text:msg});return;}
+    catch(e){if(e.name==='AbortError')return;}
+  }
+  try{
+    await navigator.clipboard.writeText(msg);
+    toast('Copied. Paste in the choir group ✓');
+    return;
+  }catch(e){}
+  showShareModal(msg);
+}
+function showShareModal(text){
+  const sheet=document.getElementById('sheet');
+  sheet.innerHTML=
+    '<div class="grip"></div>'+
+    '<h3>Today\'s roll</h3>'+
+    '<p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px">Select all, copy, then paste into the choir group.</p>'+
+    '<textarea readonly style="width:100%;min-height:280px;font-family:inherit;font-size:13px;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fff">'+esc(text)+'</textarea>'+
+    '<button class="btn" style="margin-top:10px" onclick="closeSheet()">Done</button>';
+  openSheet();
+  setTimeout(()=>{const t=document.querySelector('#sheet textarea');if(t){t.focus();t.select();}},80);
+}
+
 /* =========================================================
    MEMBERS
    ========================================================= */
@@ -897,6 +971,14 @@ function openMember(id){
       <input type="date" id="m-joined" value="${m&&m.joined?m.joined:todayISO()}">
       <small style="color:var(--ink-faint);font-size:11px">Attendance is counted from this date. Backdate for existing members you forgot to add.</small>
     </label>
+    <label class="fld" style="display:flex;align-items:flex-start;gap:9px;background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px">
+      <input type="checkbox" id="m-registered" ${(!m||m.registered!==false)?'checked':''}
+        style="margin-top:2px;width:18px;height:18px;flex:none">
+      <span style="margin:0">
+        <b style="display:block;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0">Registered for this trimester</b>
+        <small style="color:var(--ink-faint);font-size:11px;font-weight:400">Untick for members who didn't fill the form. They'll still appear on the roll but won't be counted in the trimester's attendance score or fees.</small>
+      </span>
+    </label>
     <button class="btn" onclick="saveMember()">${m?'Save changes':'Add member'}</button>
     ${m?`<button class="btn subtle" style="margin-top:9px" onclick="removeMember('${m.id}')">
         Remove from choir</button>`:''}
@@ -909,11 +991,12 @@ async function saveMember(){
   const part=document.getElementById('m-part').value;
   const status=document.getElementById('m-status').value;
   const joined=document.getElementById('m-joined').value||todayISO();
+  const registered=document.getElementById('m-registered').checked;
   if(editingMemberId){
     const m=state.members.find(x=>x.id===editingMemberId);
-    m.name=name;m.part=part;m.status=status;m.joined=joined;
+    m.name=name;m.part=part;m.status=status;m.joined=joined;m.registered=registered;
   }else{
-    state.members.push({id:uid(),name,part,status,joined});
+    state.members.push({id:uid(),name,part,status,joined,registered});
   }
   await save();closeSheet();renderMembers();renderReports();toast('Saved ✓');
 }
@@ -1045,8 +1128,6 @@ function effectiveJoinDate(member){
 function memberStats(id){
   const member=state.members.find(m=>m.id===id);
   const joined=effectiveJoinDate(member);
-  // every session on or after the join date counts; an unmarked session
-  // means the member existed but wasn't present, so it counts as Absent
   const sessions=state.sessions
     .filter(s=>s.date>=joined)
     .sort((a,b)=>a.date.localeCompare(b.date));
@@ -1058,18 +1139,25 @@ function memberStats(id){
     else if(r.s==='e')e++;else if(r.s==='a')a++;
     if(r.le)x++;
   });
-  // 80% audition line: present + late + excused (only an unexcused absence misses)
-  const counted=p+l+e;
+  // attendance score per choir policy: only P + L count. Excused absences
+  // reduce the score the same as unexcused — the only difference is the fee.
+  const counted=p+l;
   const pct=total?Math.round(counted/total*100):0;
   // probation streak: trailing run of rehearsals actually attended
   let streak=0;
   for(let i=recs.length-1;i>=0;i--){
     if(recs[i].s==='p'||recs[i].s==='l')streak++; else break;
   }
-  // "mostly excused" flag — visible heads-up for excuse patterns
+  // "mostly excused" flag — still useful as a discipline heads-up
   const mostlyExcused=total>=3&&(e/total)>=0.4;
   const incidents=state.incidents.filter(it=>it.memberId===id).length;
-  return {total,p,l,e,a,x,pct,counted,streak,incidents,mostlyExcused,
+  // fee owed: per unexcused absence, only counted when there's a fee set
+  const fee=(state.settings&&Number(state.settings.feePerAbsence))||0;
+  const feeOwed=a*fee;
+  // tracked = Official + on the term roster. Probation and bonus members
+  // appear in the roll but are not counted in the term's attendance stats.
+  const tracked=!!member && member.status==='Official' && member.registered!==false;
+  return {total,p,l,e,a,x,pct,counted,streak,incidents,mostlyExcused,feeOwed,tracked,
     attended:p+l,eligible:total>0&&pct>=PASS_MARK*100};
 }
 
@@ -1171,16 +1259,22 @@ function renderReports(){
   const grid=document.getElementById('stat-grid');
   const list=document.getElementById('report-list');
   const stats=state.members.map(m=>({m,s:memberStats(m.id)}));
-  const withSessions=stats.filter(x=>x.s.total>0);
-  const avg=withSessions.length
-    ? Math.round(withSessions.reduce((a,x)=>a+x.s.pct,0)/withSessions.length):0;
-  const belowMark=withSessions.filter(x=>!x.s.eligible).length;
+  // for term metrics, only count members on the official roster (Official + registered)
+  const trackedWithSessions=stats.filter(x=>x.s.tracked&&x.s.total>0);
+  const avg=trackedWithSessions.length
+    ? Math.round(trackedWithSessions.reduce((a,x)=>a+x.s.pct,0)/trackedWithSessions.length):0;
+  const belowMark=trackedWithSessions.filter(x=>!x.s.eligible).length;
+  const fee=(state.settings&&Number(state.settings.feePerAbsence))||0;
+  const totalFees=stats.filter(x=>x.s.tracked).reduce((a,x)=>a+x.s.feeOwed,0);
+  const trackedCount=stats.filter(x=>x.s.tracked).length;
 
   grid.innerHTML=`
-    <div class="stat"><b>${state.members.length}</b><span>Members</span></div>
+    <div class="stat"><b>${trackedCount}</b><span>On term roster</span></div>
     <div class="stat"><b>${state.sessions.length}</b><span>Sessions logged</span></div>
     <div class="stat"><b>${avg}%</b><span>Average attendance</span></div>
-    <div class="stat ${belowMark?'flag':''}"><b>${belowMark}</b><span>Below 80% mark</span></div>
+    ${fee>0
+      ? `<div class="stat ${totalFees?'flag':''}"><b>${totalFees.toLocaleString()}</b><span>RWF fees owed</span></div>`
+      : `<div class="stat ${belowMark?'flag':''}"><b>${belowMark}</b><span>Below 80% mark</span></div>`}
   `;
 
   if(!state.members.length){
@@ -1204,13 +1298,24 @@ function renderReports(){
     }
     const good=s.eligible;
     const col=good?'var(--present)':'var(--absent)';
+    // probation members aren't graded on attendance % — they're working toward 4 consecutive
+    // bonus members (not registered) are shown but not counted toward term metrics
+    let statusBadge='';
+    if(m.status==='Probation'){
+      const done=Math.min(s.streak,PROBATION_TARGET);
+      statusBadge=`<span class="badge probation">Probation ${done}/${PROBATION_TARGET}</span>`;
+    }else if(m.registered===false){
+      statusBadge=`<span class="badge probation">Bonus, not on roster</span>`;
+    }else{
+      statusBadge=`<span class="badge ${good?'ok':'warn'}">${good?'Audition eligible':'Below 80%'}</span>`;
+    }
     return `<div class="rep-row">
       <div class="rep-top">
         <div class="grow">
           <div class="nm">${esc(m.name)}</div>
           <div class="rep-meta">
             <span class="chip">${esc(m.part)}</span>
-            <span class="badge ${good?'ok':'warn'}">${good?'Audition eligible':'Below 80%'}</span>
+            ${statusBadge}
             ${s.mostlyExcused?`<span class="badge probation">Mostly excused</span>`:''}
           </div>
         </div>
@@ -1223,8 +1328,8 @@ function renderReports(){
         ${s.x?`<span class="chip">${s.x} left early</span>`:''}
         <span class="chip">${s.e} excused</span>
         <span class="chip">${s.a} absent</span>
+        ${s.feeOwed&&s.tracked?`<span class="chip" style="color:var(--maroon-deep);font-weight:700">${s.feeOwed.toLocaleString()} RWF</span>`:''}
         ${s.incidents?`<span class="chip" style="color:var(--absent)">${s.incidents} incident${s.incidents>1?'s':''}</span>`:''}
-        ${m.status==='Probation'?`<span class="chip">probation ${Math.min(s.streak,PROBATION_TARGET)}/${PROBATION_TARGET}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1351,7 +1456,9 @@ function rankingReport(){
     return n+(s[(v-20)%10]||s[v]||s[0]);
   }
   const ranked=state.members.map(m=>({m,st:memberStats(m.id)}))
+    .filter(x=>x.st.tracked)
     .sort((a,b)=>b.st.attended-a.st.attended||b.st.pct-a.st.pct);
+  if(!ranked.length)return null;
   // per-part ranking — rebuilt once members are globally sorted
   const partRank={};
   PARTS.forEach(part=>{
@@ -1392,6 +1499,12 @@ function setMusicDirector(v){
   state.settings.musicDirector=v;
   save();
 }
+function setFeeAmount(v){
+  state.settings=state.settings||{};
+  state.settings.feePerAbsence=Number(v)||0;
+  save();
+  renderReports();
+}
 async function exportExcel(){
   if(!state.members.length){toast('Add members first');return;}
   if(!state.sessions.length){toast('No sessions yet — take a roll first');return;}
@@ -1427,21 +1540,30 @@ async function exportExcel(){
   /* ---------- Member Summary (full per-member breakdown) ---------- */
   const stamp='Generated '+new Date().toLocaleDateString('en-GB',
     {day:'numeric',month:'long',year:'numeric'});
+  const feePer=(state.settings&&Number(state.settings.feePerAbsence))||0;
   const sum=[['ALU Choir — Member Summary'],[stamp],[],
-    ['Member','Voice part','Status','Sessions','On time','Late',
-     'Left early','Excused','Absent','Attendance %','Audition status']];
+    ['Member','Voice part','Status','On term roster','Sessions','On time','Late',
+     'Left early','Excused','Absent','Attendance %','Audition status','Fee owed (RWF)']];
   [...state.members].sort((a,b)=>
     a.part.localeCompare(b.part)||memberStats(b.id).pct-memberStats(a.id).pct
   ).forEach(m=>{
     const st=memberStats(m.id);
-    sum.push([m.name,m.part,m.status,st.total,st.p,st.l,st.x,st.e,st.a,
-      st.total?st.pct+'%':'—',
-      st.total?(st.eligible?'Eligible':'Below 80%'):'No sessions yet']);
+    let audition='No sessions yet';
+    if(st.total){
+      if(m.status==='Probation')audition='Probation '+Math.min(st.streak,PROBATION_TARGET)+'/'+PROBATION_TARGET;
+      else if(m.registered===false)audition='Bonus, not on roster';
+      else audition=st.eligible?'Eligible':'Below 80%';
+    }
+    sum.push([m.name,m.part,m.status,
+      m.registered===false?'No':'Yes',
+      st.total,st.p,st.l,st.x,st.e,st.a,
+      st.total?st.pct+'%':'—',audition,
+      st.tracked?st.feeOwed:0]);
   });
   const ws2=XLSX.utils.aoa_to_sheet(sum);
-  ws2['!cols']=[{wch:28},{wch:12},{wch:11},{wch:9},{wch:9},{wch:7},
-    {wch:10},{wch:9},{wch:9},{wch:14},{wch:15}];
-  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:10}}));
+  ws2['!cols']=[{wch:28},{wch:12},{wch:11},{wch:14},{wch:9},{wch:9},{wch:7},
+    {wch:10},{wch:9},{wch:9},{wch:14},{wch:22},{wch:13}];
+  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:12}}));
   XLSX.utils.book_append_sheet(wb,ws2,'Summary');
 
   /* ---------- Conduct log — only if there is anything to show ---------- */
@@ -1545,5 +1667,7 @@ document.getElementById('s-type').addEventListener('change',()=>{
   // restore the Music Director name in the Reports tab input
   const md=document.getElementById('md-name');
   if(md&&state.settings&&state.settings.musicDirector) md.value=state.settings.musicDirector;
+  const fee=document.getElementById('fee-amount');
+  if(fee&&state.settings&&state.settings.feePerAbsence) fee.value=state.settings.feePerAbsence;
 })();
 </script>
