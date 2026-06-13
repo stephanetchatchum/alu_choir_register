@@ -219,6 +219,9 @@
     display:flex;gap:5px;flex-wrap:wrap}
   .chip{background:var(--card-2);border:1px solid var(--line-soft);
     border-radius:6px;padding:1px 7px}
+  .chip.penalty{cursor:pointer;font-weight:700}
+  .chip.penalty.owed{background:var(--absent-bg);color:var(--absent);border-color:#E8B6B0}
+  .chip.penalty.paid{background:var(--present-bg);color:var(--present);border-color:#B9D9BE}
 
   /* ---------- rules ---------- */
   .rule-block{padding:13px 14px;border-bottom:1px solid var(--line-soft)}
@@ -436,15 +439,50 @@
         <div id="report-list"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>Fees for unexcused absences</h3></div>
+        <div class="card-head"><h3>Sanctions per the constitution</h3></div>
         <div class="card-pad">
-          <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink-soft)">
-            Set the amount each unexcused absence costs an official member. Each member's running total appears on their report.</p>
-          <label class="fld" style="margin:0">
-            <span>Amount per unexcused absence (RWF)</span>
-            <input type="number" id="fee-amount" min="0" placeholder="0 to disable"
-              oninput="setFeeAmount(this.value)">
-          </label>
+          <p style="margin:0 0 12px;font-size:12.5px;color:var(--ink-soft)">
+            Section 4 Article 1. Penalties accumulate from unexcused lates and absences. Members have a grace period to pay before facing temporary exclusion.</p>
+          <div class="row2">
+            <label class="fld" style="margin:0">
+              <span>Every N unexcused lates</span>
+              <input type="number" id="lates-thr" min="1" placeholder="3"
+                oninput="setPenaltyConfig()">
+            </label>
+            <label class="fld" style="margin:0">
+              <span>= penalty (RWF)</span>
+              <input type="number" id="lates-amt" min="0" placeholder="1000"
+                oninput="setPenaltyConfig()">
+            </label>
+          </div>
+          <div class="row2" style="margin-top:8px">
+            <label class="fld" style="margin:0">
+              <span>Every N unexcused absences</span>
+              <input type="number" id="abs-thr" min="1" placeholder="2"
+                oninput="setPenaltyConfig()">
+            </label>
+            <label class="fld" style="margin:0">
+              <span>= penalty (RWF)</span>
+              <input type="number" id="abs-amt" min="0" placeholder="1000"
+                oninput="setPenaltyConfig()">
+            </label>
+          </div>
+          <div class="row2" style="margin-top:8px">
+            <label class="fld" style="margin:0">
+              <span>Payment grace (days)</span>
+              <input type="number" id="grace-days" min="1" placeholder="10"
+                oninput="setPenaltyConfig()">
+            </label>
+            <label class="fld" style="margin:0">
+              <span>Unexcused absences → permanent exclusion</span>
+              <input type="number" id="perm-thr" min="1" placeholder="4"
+                oninput="setPenaltyConfig()">
+            </label>
+          </div>
+          <button class="btn subtle sm" style="margin-top:10px;width:auto"
+            onclick="resetPenaltyDefaults()">Reset to constitution defaults</button>
+          <p style="margin:11px 0 0;font-size:11.5px;color:var(--ink-faint)">
+            Penalty unpaid past the grace period → 2-week temporary exclusion. Two temporary exclusions → permanent exclusion. Rejoin penalty: 2,000 RWF.</p>
         </div>
       </div>
       <div class="card">
@@ -856,32 +894,33 @@ async function shareDailyRoll(){
 
   const dateStr=new Date(date+'T00:00').toLocaleDateString('en-GB',
     {weekday:'long',day:'numeric',month:'long'});
-  const STAT_TXT={p:'Present',l:'Late',e:'Excused absence',a:'Unexcused absence'};
+
+  // bucket marked members by their arrival status; absent (a) is omitted —
+  // if a name isn't in the list, they weren't there
+  const buckets={p:[],l:[],e:[]};
+  state.members.forEach(m=>{
+    const r=roll[m.id];
+    if(!r||!buckets[r.s])return;
+    buckets[r.s].push({name:m.name,le:r.le});
+  });
+  Object.values(buckets).forEach(arr=>arr.sort((a,b)=>a.name.localeCompare(b.name)));
 
   let msg='🎶 *ALU Choir Attendance*\n'+dateStr+' · '+type+'\n\n';
-  const tot={p:0,l:0,e:0,a:0,x:0};
-
-  PARTS.forEach(part=>{
-    const mem=state.members.filter(m=>m.part===part&&roll[m.id])
-      .sort((a,b)=>a.name.localeCompare(b.name));
-    if(!mem.length)return;
-    msg+='*'+part.toUpperCase()+'*\n';
-    mem.forEach(m=>{
-      const r=roll[m.id];
-      const label=STAT_TXT[r.s]||'';
-      msg+='• '+m.name+': '+label+(r.le?' (left early)':'')+'\n';
-      if(tot[r.s]!=null)tot[r.s]++;
-      if(r.le)tot.x++;
+  const sections=[
+    {key:'p',label:'Present'},
+    {key:'l',label:'Late'},
+    {key:'e',label:'Excused'}
+  ];
+  sections.forEach(({key,label})=>{
+    const list=buckets[key];
+    if(!list.length)return;
+    msg+='*'+label+' ('+list.length+')*\n';
+    list.forEach(item=>{
+      msg+='• '+item.name+(item.le?' (left early)':'')+'\n';
     });
     msg+='\n';
   });
-
-  msg+='———\nPresent: '+tot.p+' · Late: '+tot.l+' · Excused: '+tot.e+' · Unexcused: '+tot.a;
-  if(tot.x)msg+=' · Left early: '+tot.x;
-
-  // count members who exist now and weren't marked (heads-up only)
-  const unmarked=state.members.filter(m=>!roll[m.id]).length;
-  if(unmarked>0)msg+='\n\n_('+unmarked+' member'+(unmarked>1?'s':'')+' not yet marked, please update before sharing)_';
+  msg+='———\nPresent: '+buckets.p.length+' · Late: '+buckets.l.length+' · Excused: '+buckets.e.length+'\n_(anyone not listed was absent)_';
 
   // try mobile native share first, then clipboard, then a copyable modal
   if(navigator.share){
@@ -905,6 +944,72 @@ function showShareModal(text){
     '<button class="btn" style="margin-top:10px" onclick="closeSheet()">Done</button>';
   openSheet();
   setTimeout(()=>{const t=document.querySelector('#sheet textarea');if(t){t.focus();t.select();}},80);
+}
+
+/* ---------- record a penalty payment ---------- */
+function openPayment(memberId){
+  const m=state.members.find(x=>x.id===memberId);
+  if(!m)return;
+  const st=memberStats(memberId);
+  const grace=Math.max(1,Number(state.settings&&state.settings.paymentGraceDays)||10);
+  const sheet=document.getElementById('sheet');
+  sheet.innerHTML=`
+    <div class="grip"></div>
+    <h3>Penalty record · ${esc(m.name)}</h3>
+    <div style="background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>From unexcused lates</span>
+        <b>${st.penaltyFromLates.toLocaleString()} RWF</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>From unexcused absences</span>
+        <b>${st.penaltyFromAbsences.toLocaleString()} RWF</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-top:6px;border-top:1px solid var(--line-soft)">
+        <span>Total owed</span><b>${st.penaltyOwed.toLocaleString()} RWF</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>Already paid</span><b style="color:var(--present)">${st.penaltyPaid.toLocaleString()} RWF</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--line-soft)">
+        <span>Outstanding</span>
+        <b style="color:${st.penaltyOutstanding?'var(--absent)':'var(--present)'}">
+          ${st.penaltyOutstanding.toLocaleString()} RWF</b>
+      </div>
+    </div>
+    ${st.penaltyOutstanding?`<p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 12px">Per the constitution, payment is due within ${grace} days. Unpaid penalties after that may lead to a 2-week temporary exclusion.</p>`:''}
+    <label class="fld"><span>Record a payment (RWF)</span>
+      <input type="number" id="pay-amount" min="0" placeholder="e.g. ${st.penaltyOutstanding||1000}">
+    </label>
+    <div class="row2">
+      <button class="btn" style="flex:1" onclick="recordPayment('${m.id}',false)">Add to paid</button>
+      ${st.penaltyOutstanding?`<button class="btn ghost" style="flex:1" onclick="recordPayment('${m.id}',true)">Mark all paid</button>`:''}
+    </div>
+    ${st.penaltyPaid?`<button class="btn subtle" style="margin-top:9px" onclick="resetPayment('${m.id}')">Reset payment record</button>`:''}
+  `;
+  openSheet();
+}
+async function recordPayment(memberId,markAll){
+  const m=state.members.find(x=>x.id===memberId);
+  if(!m)return;
+  const st=memberStats(memberId);
+  let amount;
+  if(markAll){
+    amount=st.penaltyOutstanding;
+  }else{
+    amount=Number(document.getElementById('pay-amount').value)||0;
+    if(amount<=0){toast('Enter an amount');return;}
+  }
+  m.penaltyPaid=(Number(m.penaltyPaid)||0)+amount;
+  await save();closeSheet();renderReports();
+  toast(amount.toLocaleString()+' RWF recorded ✓');
+}
+async function resetPayment(memberId){
+  if(!confirm('Reset this member\'s payment record to 0?'))return;
+  const m=state.members.find(x=>x.id===memberId);
+  if(!m)return;
+  m.penaltyPaid=0;
+  await save();closeSheet();renderReports();toast('Payment record reset');
 }
 
 /* =========================================================
@@ -1151,13 +1256,30 @@ function memberStats(id){
   // "mostly excused" flag — still useful as a discipline heads-up
   const mostlyExcused=total>=3&&(e/total)>=0.4;
   const incidents=state.incidents.filter(it=>it.memberId===id).length;
-  // fee owed: per unexcused absence, only counted when there's a fee set
-  const fee=(state.settings&&Number(state.settings.feePerAbsence))||0;
-  const feeOwed=a*fee;
+  // Penalties per the ALU Choir constitution, Section 4 Article 1:
+  //   • every N unexcused lates → fixed penalty amount
+  //   • every N unexcused absences → fixed penalty amount
+  //   • payment due within X days of being sanctioned
+  // The exact thresholds and amounts are configurable on the Reports tab.
+  const cfg=state.settings||{};
+  const latesAmt=Number(cfg.latesPenaltyAmount)||0;
+  const latesThr=Math.max(1,Number(cfg.latesPenaltyThreshold)||3);
+  const absAmt=Number(cfg.absencesPenaltyAmount)||0;
+  const absThr=Math.max(1,Number(cfg.absencesPenaltyThreshold)||2);
+  const penaltyFromLates=Math.floor(l/latesThr)*latesAmt;
+  const penaltyFromAbsences=Math.floor(a/absThr)*absAmt;
+  const penaltyOwed=penaltyFromLates+penaltyFromAbsences;
+  const penaltyPaid=Number(member&&member.penaltyPaid)||0;
+  const penaltyOutstanding=Math.max(0,penaltyOwed-penaltyPaid);
+  // Constitution Section 4 Art 1: 4 unexcused absences → permanent suspension
+  const permThr=Math.max(1,Number(cfg.permExclusionAbsences)||4);
+  const exclusionEligible=a>=permThr;
   // tracked = Official + on the term roster. Probation and bonus members
   // appear in the roll but are not counted in the term's attendance stats.
   const tracked=!!member && member.status==='Official' && member.registered!==false;
-  return {total,p,l,e,a,x,pct,counted,streak,incidents,mostlyExcused,feeOwed,tracked,
+  return {total,p,l,e,a,x,pct,counted,streak,incidents,mostlyExcused,tracked,
+    penaltyOwed,penaltyPaid,penaltyOutstanding,
+    penaltyFromLates,penaltyFromAbsences,exclusionEligible,
     attended:p+l,eligible:total>0&&pct>=PASS_MARK*100};
 }
 
@@ -1264,16 +1386,15 @@ function renderReports(){
   const avg=trackedWithSessions.length
     ? Math.round(trackedWithSessions.reduce((a,x)=>a+x.s.pct,0)/trackedWithSessions.length):0;
   const belowMark=trackedWithSessions.filter(x=>!x.s.eligible).length;
-  const fee=(state.settings&&Number(state.settings.feePerAbsence))||0;
-  const totalFees=stats.filter(x=>x.s.tracked).reduce((a,x)=>a+x.s.feeOwed,0);
+  const totalOutstanding=stats.filter(x=>x.s.tracked).reduce((a,x)=>a+x.s.penaltyOutstanding,0);
   const trackedCount=stats.filter(x=>x.s.tracked).length;
 
   grid.innerHTML=`
     <div class="stat"><b>${trackedCount}</b><span>On term roster</span></div>
     <div class="stat"><b>${state.sessions.length}</b><span>Sessions logged</span></div>
     <div class="stat"><b>${avg}%</b><span>Average attendance</span></div>
-    ${fee>0
-      ? `<div class="stat ${totalFees?'flag':''}"><b>${totalFees.toLocaleString()}</b><span>RWF fees owed</span></div>`
+    ${totalOutstanding>0
+      ? `<div class="stat flag"><b>${totalOutstanding.toLocaleString()}</b><span>RWF unpaid penalties</span></div>`
       : `<div class="stat ${belowMark?'flag':''}"><b>${belowMark}</b><span>Below 80% mark</span></div>`}
   `;
 
@@ -1328,7 +1449,8 @@ function renderReports(){
         ${s.x?`<span class="chip">${s.x} left early</span>`:''}
         <span class="chip">${s.e} excused</span>
         <span class="chip">${s.a} absent</span>
-        ${s.feeOwed&&s.tracked?`<span class="chip" style="color:var(--maroon-deep);font-weight:700">${s.feeOwed.toLocaleString()} RWF</span>`:''}
+        ${s.tracked&&s.penaltyOwed?`<span class="chip penalty ${s.penaltyOutstanding?'owed':'paid'}" onclick="openPayment('${m.id}')">${s.penaltyOutstanding?(s.penaltyOutstanding.toLocaleString()+' RWF unpaid'):'penalties cleared ✓'}</span>`:''}
+        ${s.tracked&&s.exclusionEligible?`<span class="chip" style="background:var(--absent);color:#fff;font-weight:700">Exclusion eligible</span>`:''}
         ${s.incidents?`<span class="chip" style="color:var(--absent)">${s.incidents} incident${s.incidents>1?'s':''}</span>`:''}
       </div>
     </div>`;
@@ -1499,11 +1621,25 @@ function setMusicDirector(v){
   state.settings.musicDirector=v;
   save();
 }
-function setFeeAmount(v){
+function setPenaltyConfig(){
   state.settings=state.settings||{};
-  state.settings.feePerAbsence=Number(v)||0;
+  const g=id=>{const v=document.getElementById(id);return v?Number(v.value)||0:0;};
+  state.settings.latesPenaltyThreshold=g('lates-thr');
+  state.settings.latesPenaltyAmount=g('lates-amt');
+  state.settings.absencesPenaltyThreshold=g('abs-thr');
+  state.settings.absencesPenaltyAmount=g('abs-amt');
+  state.settings.paymentGraceDays=g('grace-days');
+  state.settings.permExclusionAbsences=g('perm-thr');
   save();
   renderReports();
+}
+function resetPenaltyDefaults(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  set('lates-thr',3);set('lates-amt',1000);
+  set('abs-thr',2);set('abs-amt',1000);
+  set('grace-days',10);set('perm-thr',4);
+  setPenaltyConfig();
+  toast('Defaults restored ✓');
 }
 async function exportExcel(){
   if(!state.members.length){toast('Add members first');return;}
@@ -1540,10 +1676,10 @@ async function exportExcel(){
   /* ---------- Member Summary (full per-member breakdown) ---------- */
   const stamp='Generated '+new Date().toLocaleDateString('en-GB',
     {day:'numeric',month:'long',year:'numeric'});
-  const feePer=(state.settings&&Number(state.settings.feePerAbsence))||0;
   const sum=[['ALU Choir — Member Summary'],[stamp],[],
     ['Member','Voice part','Status','On term roster','Sessions','On time','Late',
-     'Left early','Excused','Absent','Attendance %','Audition status','Fee owed (RWF)']];
+     'Left early','Excused','Absent','Attendance %','Audition status',
+     'Penalty owed (RWF)','Penalty paid (RWF)','Outstanding (RWF)']];
   [...state.members].sort((a,b)=>
     a.part.localeCompare(b.part)||memberStats(b.id).pct-memberStats(a.id).pct
   ).forEach(m=>{
@@ -1558,12 +1694,14 @@ async function exportExcel(){
       m.registered===false?'No':'Yes',
       st.total,st.p,st.l,st.x,st.e,st.a,
       st.total?st.pct+'%':'—',audition,
-      st.tracked?st.feeOwed:0]);
+      st.tracked?st.penaltyOwed:0,
+      st.tracked?st.penaltyPaid:0,
+      st.tracked?st.penaltyOutstanding:0]);
   });
   const ws2=XLSX.utils.aoa_to_sheet(sum);
   ws2['!cols']=[{wch:28},{wch:12},{wch:11},{wch:14},{wch:9},{wch:9},{wch:7},
-    {wch:10},{wch:9},{wch:9},{wch:14},{wch:22},{wch:13}];
-  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:12}}));
+    {wch:10},{wch:9},{wch:9},{wch:14},{wch:22},{wch:14},{wch:14},{wch:14}];
+  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:14}}));
   XLSX.utils.book_append_sheet(wb,ws2,'Summary');
 
   /* ---------- Conduct log — only if there is anything to show ---------- */
@@ -1667,7 +1805,15 @@ document.getElementById('s-type').addEventListener('change',()=>{
   // restore the Music Director name in the Reports tab input
   const md=document.getElementById('md-name');
   if(md&&state.settings&&state.settings.musicDirector) md.value=state.settings.musicDirector;
-  const fee=document.getElementById('fee-amount');
-  if(fee&&state.settings&&state.settings.feePerAbsence) fee.value=state.settings.feePerAbsence;
+  // restore penalty config inputs
+  const s=state.settings||{};
+  const fill=(id,key,def)=>{const el=document.getElementById(id);
+    if(el)el.value=(s[key]!=null?s[key]:def);};
+  fill('lates-thr','latesPenaltyThreshold',3);
+  fill('lates-amt','latesPenaltyAmount',1000);
+  fill('abs-thr','absencesPenaltyThreshold',2);
+  fill('abs-amt','absencesPenaltyAmount',1000);
+  fill('grace-days','paymentGraceDays',10);
+  fill('perm-thr','permExclusionAbsences',4);
 })();
 </script>
