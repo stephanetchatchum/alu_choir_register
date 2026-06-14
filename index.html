@@ -486,6 +486,27 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-head"><h3>Membership subscription</h3></div>
+        <div class="card-pad">
+          <p style="margin:0 0 12px;font-size:12.5px;color:var(--ink-soft)">
+            Section 3 Article 1.4. Set the term amount to start tracking. Each member's running subscription balance appears on their report.</p>
+          <div class="row2">
+            <label class="fld" style="margin:0">
+              <span>Subscription per term (RWF)</span>
+              <input type="number" id="sub-term" min="0" placeholder="0 to disable"
+                oninput="setSubscriptionConfig()">
+            </label>
+            <label class="fld" style="margin:0">
+              <span>Monthly installment (RWF)</span>
+              <input type="number" id="sub-month" min="0" placeholder="2000"
+                oninput="setSubscriptionConfig()">
+            </label>
+          </div>
+          <p style="margin:11px 0 0;font-size:11.5px;color:var(--ink-faint)">
+            Constitution defaults: 8,000 RWF per term, or 2,000 RWF monthly with end-of-month deadlines.</p>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-head"><h3>Share with the executives</h3></div>
         <div class="card-pad">
           <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink-soft)">
@@ -523,54 +544,138 @@
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Member responsibilities</h3></div>
+        <div class="card-head"><h3>Membership (Section 3)</h3></div>
         <div class="rule-block">
           <ul>
-            <li>Attend rehearsals, meetings and performances punctually — a 15-minute tolerance after the start time is allowed.</li>
-            <li>Actively take part in all choir activities, including rehearsals, sectional practice and performances.</li>
-            <li>Notify the Discipline Officer or Leadership Team in advance when unable to attend.</li>
-            <li>Prepare vocal parts and practise assigned music before rehearsals.</li>
-            <li>Treat all members, staff and volunteers with respect, cooperation and professionalism.</li>
-            <li>Follow the choir's dress code for performances and official events.</li>
-            <li>Meet all agreed financial obligations — registration fee, contributions, uniforms.</li>
+            <li>Open to any currently enrolled student, alumnus, faculty or staff member of ALU.</li>
+            <li>New members join the <b>"ALU Choir Global"</b> WhatsApp group.</li>
+            <li>After <b>3 consecutive rehearsals</b>, a member becomes Official and joins <b>"The ALU Choir"</b> WhatsApp group.</li>
+            <li>Membership subscription: <b>8,000 RWF per term</b>, or monthly installments of <b>2,000 RWF</b> due by the end of each month.</li>
           </ul>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Disciplinary measures</h3></div>
+        <div class="card-head"><h3>Punctuality &amp; Attendance (Section 4 Art 1)</h3></div>
         <div class="rule-block">
-          <p style="color:var(--ink-soft);margin-bottom:8px">Non-compliance may lead, in order of severity, to:</p>
           <ul>
-            <li><b>Verbal or written warning</b></li>
-            <li><b>Temporary suspension</b></li>
-            <li><b>Permanent dismissal</b> from the choir</li>
+            <li>Arrive on time for rehearsals, meetings and performances. A <b>15-minute tolerance</b> is granted after the start time.</li>
+            <li>Members must participate in all choir activities as far as possible.</li>
+            <li>Notify the <b>Discipline Officer</b> in advance if you cannot attend a rehearsal or event.</li>
+          </ul>
+          <p style="color:var(--ink-soft);margin:10px 0 6px;font-size:12.5px;font-weight:700">Sanctions:</p>
+          <ul>
+            <li>An unexcused delay → rehearse behind the line of chairs.</li>
+            <li><b>3 unexcused delays</b> → 1,000 RWF penalty. If refused: 2-week temporary exclusion.</li>
+            <li><b>2 unexcused absences</b> (one week) → 1,000 RWF penalty. If refused: 2-week temporary exclusion.</li>
+            <li><b>2 temporary exclusions</b> → permanent exclusion.</li>
+            <li><b>4 unexcused absences</b> (two weeks) → permanent suspension.</li>
+            <li>Penalty due within <b>10 days</b> of being sanctioned.</li>
+            <li>To rejoin after permanent exclusion: <b>2,000 RWF</b> penalty.</li>
           </ul>
           <div class="keyrule">
             <div class="k">!</div>
-            <div>Specific sanctions may include re-doing probation or re-registration. Sanctions apply only to <b>Official Members</b>. The Leadership Team, guided by the Music Director, oversees discipline fairly and consistently.</div>
+            <div>All sanctions in this article apply <b>only to Official Members</b>. Probation members work toward becoming Official through the 3-rehearsal rule.</div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Thresholds the app tracks</h3></div>
+        <div class="card-head"><h3>Vocal &amp; Musical Preparation (Section 4 Art 2)</h3></div>
+        <div class="rule-block">
+          <ul>
+            <li>Practise vocal parts and learn assigned music before rehearsals — even when on temporary exclusion.</li>
+            <li>Attend sectional rehearsals as required by the Music Director.</li>
+          </ul>
+          <p style="color:var(--ink-soft);margin:10px 0 6px;font-size:12.5px;font-weight:700">Sanctions:</p>
+          <ul>
+            <li>One-on-one coaching or extra practice may be required.</li>
+            <li>Inadequate preparation may reduce performance participation.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Respect &amp; Cooperation (Section 4 Art 3)</h3></div>
+        <div class="rule-block">
+          <ul>
+            <li>Treat all choir members, staff and volunteers with respect and kindness.</li>
+            <li>Cooperate with and follow the instructions of the Leadership team.</li>
+          </ul>
+          <p style="color:var(--ink-soft);margin:10px 0 6px;font-size:12.5px;font-weight:700">Sanctions:</p>
+          <ul>
+            <li>First offence: verbal warning.</li>
+            <li>Second offence: written warning.</li>
+            <li>Repeated violations: temporary or permanent suspension.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Dress Code (Section 4 Art 4)</h3></div>
+        <div class="rule-block">
+          <ul>
+            <li>Adhere to the designated dress code for performances and events.</li>
+            <li>Maintain a neat and tidy appearance when representing the choir.</li>
+          </ul>
+          <p style="color:var(--ink-soft);margin:10px 0 6px;font-size:12.5px;font-weight:700">Sanctions:</p>
+          <ul>
+            <li>Exclusion from the performance or event in question.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Financial Commitment (Section 4 Art 5)</h3></div>
+        <div class="rule-block">
+          <ul>
+            <li>Fulfil all agreed financial commitments — subscriptions, uniforms and similar.</li>
+          </ul>
+          <p style="color:var(--ink-soft);margin:10px 0 6px;font-size:12.5px;font-weight:700">Sanctions:</p>
+          <ul>
+            <li>Restricted participation in events or performances until obligations are met.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Leadership (Section 5)</h3></div>
+        <div class="rule-block">
+          <p style="margin:0 0 6px;font-size:13.5px;color:var(--ink-soft)">The choir is led by two committees:</p>
+          <p style="margin:0 0 4px;font-size:13px;font-weight:700">Executive Committee</p>
+          <ul style="margin-top:0">
+            <li>President, Vice-President, General Secretary, Assistant Secretary, Treasurer, Discipline Officer, Public Relations Officer.</li>
+          </ul>
+          <p style="margin:0 0 4px;font-size:13px;font-weight:700">Music Committee</p>
+          <ul style="margin-top:0">
+            <li>Music Director, Choirmasters, Music Facilitator, Section/Part Leads.</li>
+          </ul>
+          <p style="margin:6px 0 0;font-size:12.5px;color:var(--ink-soft)">Officer terms run one year (May to April), renewable once for President, Vice-President, General Secretary and Treasurer.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Quick reference</h3></div>
         <div class="rule-block">
           <div class="keyrule">
-            <div class="k">80%</div>
-            <div>Minimum attendance (excused absences included) to qualify for a pre-performance audition.</div>
-          </div>
-          <div class="keyrule">
-            <div class="k">4&times;</div>
-            <div>Consecutive rehearsals a new member must attend — with the 5,000 RWF fee paid — to become an Official Member.</div>
+            <div class="k">3&times;</div>
+            <div>Consecutive rehearsals to become an Official Member.</div>
           </div>
           <div class="keyrule">
             <div class="k">15'</div>
-            <div>Grace period after start time. Arriving later counts as Late.</div>
+            <div>Grace period after the start time. Later arrivals count as Late.</div>
+          </div>
+          <div class="keyrule">
+            <div class="k">8,000</div>
+            <div>RWF per term subscription, or 2,000 RWF per month with end-of-month deadlines.</div>
+          </div>
+          <div class="keyrule">
+            <div class="k">10</div>
+            <div>Days to pay a penalty before facing a 2-week temporary exclusion.</div>
           </div>
         </div>
       </div>
-      <p class="fab-note">Discipline Officer: records participation, ensures members follow the rules and constitution, keeps order, and addresses misconduct.</p>
+      <p class="fab-note">Discipline Officer (Section 5 Art 3.6): records participation, ensures members follow the rules and constitution, keeps order, and addresses misconduct or violations.</p>
     </section>
   </main>
 
@@ -627,7 +732,7 @@ const PARTS=['Soprano','Alto','Tenor','Bass'];
 const SANCTIONS=['Note only','Verbal warning','Written warning','Temporary suspension','Permanent dismissal'];
 const CATEGORIES=['Lateness','Disrespect / conduct','Absence without notice','Dress code','Disruption in rehearsal','Other'];
 const PASS_MARK=0.80;        // 80% attendance for audition eligibility
-const PROBATION_TARGET=4;    // consecutive rehearsals
+const PROBATION_TARGET=3;    // consecutive rehearsals (constitution Section 3 Art 1.3)
 
 let state={members:[],sessions:[],incidents:[],ui:null,settings:{}};
 let roll={};                 // {memberId: 'p'|'l'|'e'|'a'}
@@ -946,70 +1051,100 @@ function showShareModal(text){
   setTimeout(()=>{const t=document.querySelector('#sheet textarea');if(t){t.focus();t.select();}},80);
 }
 
-/* ---------- record a penalty payment ---------- */
+/* ---------- record penalty / subscription payments ---------- */
 function openPayment(memberId){
   const m=state.members.find(x=>x.id===memberId);
   if(!m)return;
   const st=memberStats(memberId);
   const grace=Math.max(1,Number(state.settings&&state.settings.paymentGraceDays)||10);
   const sheet=document.getElementById('sheet');
+  const subEnabled=st.subTerm>0;
   sheet.innerHTML=`
     <div class="grip"></div>
-    <h3>Penalty record · ${esc(m.name)}</h3>
-    <div style="background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span>From unexcused lates</span>
-        <b>${st.penaltyFromLates.toLocaleString()} RWF</b>
+    <h3>Financial record · ${esc(m.name)}</h3>
+
+    <div style="background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:8px;font-size:13px">
+      <div style="font-weight:700;color:var(--maroon-deep);margin-bottom:6px;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px">Penalties</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span>From unexcused lates</span><b>${st.penaltyFromLates.toLocaleString()} RWF</b>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span>From unexcused absences</span>
-        <b>${st.penaltyFromAbsences.toLocaleString()} RWF</b>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span>From unexcused absences</span><b>${st.penaltyFromAbsences.toLocaleString()} RWF</b>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-top:6px;border-top:1px solid var(--line-soft)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;padding-top:5px;border-top:1px solid var(--line-soft)">
         <span>Total owed</span><b>${st.penaltyOwed.toLocaleString()} RWF</b>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
         <span>Already paid</span><b style="color:var(--present)">${st.penaltyPaid.toLocaleString()} RWF</b>
       </div>
-      <div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--line-soft)">
+      <div style="display:flex;justify-content:space-between;padding-top:5px;border-top:1px solid var(--line-soft)">
         <span>Outstanding</span>
-        <b style="color:${st.penaltyOutstanding?'var(--absent)':'var(--present)'}">
-          ${st.penaltyOutstanding.toLocaleString()} RWF</b>
+        <b style="color:${st.penaltyOutstanding?'var(--absent)':'var(--present)'}">${st.penaltyOutstanding.toLocaleString()} RWF</b>
       </div>
     </div>
-    ${st.penaltyOutstanding?`<p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 12px">Per the constitution, payment is due within ${grace} days. Unpaid penalties after that may lead to a 2-week temporary exclusion.</p>`:''}
-    <label class="fld"><span>Record a payment (RWF)</span>
+    ${st.penaltyOutstanding?`<p style="font-size:11.5px;color:var(--ink-faint);margin:0 0 8px">Payment due within ${grace} days of being sanctioned. Unpaid penalties may lead to a 2-week temporary exclusion.</p>`:''}
+    <label class="fld" style="margin-bottom:8px"><span>Record a penalty payment (RWF)</span>
       <input type="number" id="pay-amount" min="0" placeholder="e.g. ${st.penaltyOutstanding||1000}">
     </label>
-    <div class="row2">
-      <button class="btn" style="flex:1" onclick="recordPayment('${m.id}',false)">Add to paid</button>
-      ${st.penaltyOutstanding?`<button class="btn ghost" style="flex:1" onclick="recordPayment('${m.id}',true)">Mark all paid</button>`:''}
+    <div class="row2" style="margin-bottom:14px">
+      <button class="btn" style="flex:1" onclick="recordPayment('${m.id}','penalty',false)">Add to paid</button>
+      ${st.penaltyOutstanding?`<button class="btn ghost" style="flex:1" onclick="recordPayment('${m.id}','penalty',true)">Mark all paid</button>`:''}
     </div>
-    ${st.penaltyPaid?`<button class="btn subtle" style="margin-top:9px" onclick="resetPayment('${m.id}')">Reset payment record</button>`:''}
+
+    ${subEnabled?`
+    <div style="background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:8px;font-size:13px">
+      <div style="font-weight:700;color:var(--maroon-deep);margin-bottom:6px;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px">Membership subscription</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span>Term subscription</span><b>${st.subTerm.toLocaleString()} RWF</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span>Paid so far</span><b style="color:var(--present)">${st.subPaid.toLocaleString()} RWF</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:5px;border-top:1px solid var(--line-soft)">
+        <span>Outstanding</span>
+        <b style="color:${st.subOutstanding?'var(--absent)':'var(--present)'}">${st.subOutstanding.toLocaleString()} RWF</b>
+      </div>
+    </div>
+    <label class="fld" style="margin-bottom:8px"><span>Record a subscription payment (RWF)</span>
+      <input type="number" id="sub-pay-amount" min="0" placeholder="e.g. ${(state.settings&&state.settings.subscriptionMonthlyAmount)||st.subOutstanding||2000}">
+    </label>
+    <div class="row2" style="margin-bottom:8px">
+      <button class="btn" style="flex:1" onclick="recordPayment('${m.id}','sub',false)">Add to paid</button>
+      ${st.subOutstanding?`<button class="btn ghost" style="flex:1" onclick="recordPayment('${m.id}','sub',true)">Mark all paid</button>`:''}
+    </div>
+    `:''}
+
+    ${(st.penaltyPaid||st.subPaid)?`<button class="btn subtle" style="margin-top:9px" onclick="resetPayment('${m.id}')">Reset all payment records</button>`:''}
   `;
   openSheet();
 }
-async function recordPayment(memberId,markAll){
+async function recordPayment(memberId,kind,markAll){
   const m=state.members.find(x=>x.id===memberId);
   if(!m)return;
   const st=memberStats(memberId);
   let amount;
   if(markAll){
-    amount=st.penaltyOutstanding;
+    amount=kind==='sub'?st.subOutstanding:st.penaltyOutstanding;
   }else{
-    amount=Number(document.getElementById('pay-amount').value)||0;
+    const inputId=kind==='sub'?'sub-pay-amount':'pay-amount';
+    amount=Number(document.getElementById(inputId).value)||0;
     if(amount<=0){toast('Enter an amount');return;}
   }
-  m.penaltyPaid=(Number(m.penaltyPaid)||0)+amount;
+  if(kind==='sub'){
+    m.subscriptionPaid=(Number(m.subscriptionPaid)||0)+amount;
+  }else{
+    m.penaltyPaid=(Number(m.penaltyPaid)||0)+amount;
+  }
   await save();closeSheet();renderReports();
   toast(amount.toLocaleString()+' RWF recorded ✓');
 }
 async function resetPayment(memberId){
-  if(!confirm('Reset this member\'s payment record to 0?'))return;
+  if(!confirm('Reset this member\'s penalty AND subscription payment records to 0?'))return;
   const m=state.members.find(x=>x.id===memberId);
   if(!m)return;
   m.penaltyPaid=0;
-  await save();closeSheet();renderReports();toast('Payment record reset');
+  m.subscriptionPaid=0;
+  await save();closeSheet();renderReports();toast('Records reset');
 }
 
 /* =========================================================
@@ -1274,12 +1409,18 @@ function memberStats(id){
   // Constitution Section 4 Art 1: 4 unexcused absences → permanent suspension
   const permThr=Math.max(1,Number(cfg.permExclusionAbsences)||4);
   const exclusionEligible=a>=permThr;
+  // Membership subscription per Section 3 Art 1.4: 8,000 RWF per term, or 2,000 monthly.
+  // Tracked as a single running total per term — only enabled when an amount is set.
+  const subTerm=Number(cfg.subscriptionTermAmount)||0;
+  const subPaid=Number(member&&member.subscriptionPaid)||0;
+  const subOutstanding=Math.max(0,subTerm-subPaid);
   // tracked = Official + on the term roster. Probation and bonus members
   // appear in the roll but are not counted in the term's attendance stats.
   const tracked=!!member && member.status==='Official' && member.registered!==false;
   return {total,p,l,e,a,x,pct,counted,streak,incidents,mostlyExcused,tracked,
     penaltyOwed,penaltyPaid,penaltyOutstanding,
     penaltyFromLates,penaltyFromAbsences,exclusionEligible,
+    subTerm,subPaid,subOutstanding,
     attended:p+l,eligible:total>0&&pct>=PASS_MARK*100};
 }
 
@@ -1386,7 +1527,9 @@ function renderReports(){
   const avg=trackedWithSessions.length
     ? Math.round(trackedWithSessions.reduce((a,x)=>a+x.s.pct,0)/trackedWithSessions.length):0;
   const belowMark=trackedWithSessions.filter(x=>!x.s.eligible).length;
-  const totalOutstanding=stats.filter(x=>x.s.tracked).reduce((a,x)=>a+x.s.penaltyOutstanding,0);
+  const totalOutstandingPen=stats.filter(x=>x.s.tracked).reduce((a,x)=>a+x.s.penaltyOutstanding,0);
+  const totalOutstandingSub=stats.filter(x=>x.s.tracked).reduce((a,x)=>a+x.s.subOutstanding,0);
+  const totalOutstanding=totalOutstandingPen+totalOutstandingSub;
   const trackedCount=stats.filter(x=>x.s.tracked).length;
 
   grid.innerHTML=`
@@ -1394,7 +1537,7 @@ function renderReports(){
     <div class="stat"><b>${state.sessions.length}</b><span>Sessions logged</span></div>
     <div class="stat"><b>${avg}%</b><span>Average attendance</span></div>
     ${totalOutstanding>0
-      ? `<div class="stat flag"><b>${totalOutstanding.toLocaleString()}</b><span>RWF unpaid penalties</span></div>`
+      ? `<div class="stat flag"><b>${totalOutstanding.toLocaleString()}</b><span>RWF outstanding</span></div>`
       : `<div class="stat ${belowMark?'flag':''}"><b>${belowMark}</b><span>Below 80% mark</span></div>`}
   `;
 
@@ -1450,6 +1593,7 @@ function renderReports(){
         <span class="chip">${s.e} excused</span>
         <span class="chip">${s.a} absent</span>
         ${s.tracked&&s.penaltyOwed?`<span class="chip penalty ${s.penaltyOutstanding?'owed':'paid'}" onclick="openPayment('${m.id}')">${s.penaltyOutstanding?(s.penaltyOutstanding.toLocaleString()+' RWF unpaid'):'penalties cleared ✓'}</span>`:''}
+        ${s.tracked&&s.subTerm?`<span class="chip penalty ${s.subOutstanding?'owed':'paid'}" onclick="openPayment('${m.id}')">${s.subOutstanding?('Sub: '+s.subOutstanding.toLocaleString()+' RWF'):'Sub paid ✓'}</span>`:''}
         ${s.tracked&&s.exclusionEligible?`<span class="chip" style="background:var(--absent);color:#fff;font-weight:700">Exclusion eligible</span>`:''}
         ${s.incidents?`<span class="chip" style="color:var(--absent)">${s.incidents} incident${s.incidents>1?'s':''}</span>`:''}
       </div>
@@ -1641,6 +1785,14 @@ function resetPenaltyDefaults(){
   setPenaltyConfig();
   toast('Defaults restored ✓');
 }
+function setSubscriptionConfig(){
+  state.settings=state.settings||{};
+  const g=id=>{const v=document.getElementById(id);return v?Number(v.value)||0:0;};
+  state.settings.subscriptionTermAmount=g('sub-term');
+  state.settings.subscriptionMonthlyAmount=g('sub-month');
+  save();
+  renderReports();
+}
 async function exportExcel(){
   if(!state.members.length){toast('Add members first');return;}
   if(!state.sessions.length){toast('No sessions yet — take a roll first');return;}
@@ -1676,10 +1828,12 @@ async function exportExcel(){
   /* ---------- Member Summary (full per-member breakdown) ---------- */
   const stamp='Generated '+new Date().toLocaleDateString('en-GB',
     {day:'numeric',month:'long',year:'numeric'});
-  const sum=[['ALU Choir — Member Summary'],[stamp],[],
-    ['Member','Voice part','Status','On term roster','Sessions','On time','Late',
+  const subEnabled=((state.settings&&Number(state.settings.subscriptionTermAmount))||0)>0;
+  const head=['Member','Voice part','Status','On term roster','Sessions','On time','Late',
      'Left early','Excused','Absent','Attendance %','Audition status',
-     'Penalty owed (RWF)','Penalty paid (RWF)','Outstanding (RWF)']];
+     'Penalty owed (RWF)','Penalty paid (RWF)','Penalty outstanding (RWF)'];
+  if(subEnabled)head.push('Subscription paid (RWF)','Subscription outstanding (RWF)');
+  const sum=[['ALU Choir — Member Summary'],[stamp],[],head];
   [...state.members].sort((a,b)=>
     a.part.localeCompare(b.part)||memberStats(b.id).pct-memberStats(a.id).pct
   ).forEach(m=>{
@@ -1690,18 +1844,22 @@ async function exportExcel(){
       else if(m.registered===false)audition='Bonus, not on roster';
       else audition=st.eligible?'Eligible':'Below 80%';
     }
-    sum.push([m.name,m.part,m.status,
+    const row=[m.name,m.part,m.status,
       m.registered===false?'No':'Yes',
       st.total,st.p,st.l,st.x,st.e,st.a,
       st.total?st.pct+'%':'—',audition,
       st.tracked?st.penaltyOwed:0,
       st.tracked?st.penaltyPaid:0,
-      st.tracked?st.penaltyOutstanding:0]);
+      st.tracked?st.penaltyOutstanding:0];
+    if(subEnabled)row.push(st.tracked?st.subPaid:0, st.tracked?st.subOutstanding:0);
+    sum.push(row);
   });
   const ws2=XLSX.utils.aoa_to_sheet(sum);
-  ws2['!cols']=[{wch:28},{wch:12},{wch:11},{wch:14},{wch:9},{wch:9},{wch:7},
+  const cols=[{wch:28},{wch:12},{wch:11},{wch:14},{wch:9},{wch:9},{wch:7},
     {wch:10},{wch:9},{wch:9},{wch:14},{wch:22},{wch:14},{wch:14},{wch:14}];
-  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:14}}));
+  if(subEnabled)cols.push({wch:18},{wch:20});
+  ws2['!cols']=cols;
+  ws2['!merges']=[0,1].map(r=>({s:{r,c:0},e:{r,c:head.length-1}}));
   XLSX.utils.book_append_sheet(wb,ws2,'Summary');
 
   /* ---------- Conduct log — only if there is anything to show ---------- */
@@ -1815,5 +1973,7 @@ document.getElementById('s-type').addEventListener('change',()=>{
   fill('abs-amt','absencesPenaltyAmount',1000);
   fill('grace-days','paymentGraceDays',10);
   fill('perm-thr','permExclusionAbsences',4);
+  fill('sub-term','subscriptionTermAmount',0);
+  fill('sub-month','subscriptionMonthlyAmount',2000);
 })();
 </script>
