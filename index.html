@@ -898,9 +898,17 @@ function rollStatus(){
   const dEl=document.getElementById('s-date');
   const lbl=dEl.value?new Date(dEl.value+'T00:00').toLocaleDateString('en-GB',
     {weekday:'long',day:'numeric',month:'short'}):'this date';
-  document.getElementById('s-status').textContent= n
+  let txt= n
     ? n+' marked for '+lbl
     : 'No marks yet for '+lbl;
+  // heads-up if the session date is before every member's joined date —
+  // their attendance won't count unless we backdate their joined dates first
+  if(dEl.value && state.members.length){
+    const sessionDate=dEl.value;
+    const before=state.members.every(m=>(m.joined||'9999-12-31')>sessionDate);
+    if(before)txt+=' ⚠ all members joined after this date — backdate their join dates in Members to count this';
+  }
+  document.getElementById('s-status').textContent=txt;
 }
 function setSaveChip(cls,text){
   const c=document.getElementById('save-chip');
@@ -963,6 +971,15 @@ function toggleLE(id){
   autosaveRoll();
 }
 function markAll(code){
+  // confirm before clearing if a saved session would be wiped
+  if(!code){
+    const date=document.getElementById('s-date').value;
+    const type=document.getElementById('s-type').value;
+    const ex=state.sessions.find(s=>s.date===date&&s.type===type);
+    if(ex&&Object.keys(ex.records||{}).length>0){
+      if(!confirm('Clear all marks for this session? The saved attendance for '+date+' will be removed.'))return;
+    }
+  }
   state.members.forEach(m=>{
     if(code)roll[m.id]={s:code,le:false}; else delete roll[m.id];
   });
@@ -1379,10 +1396,16 @@ function effectiveJoinDate(member){
 function memberStats(id){
   const member=state.members.find(m=>m.id===id);
   const joined=effectiveJoinDate(member);
-  const sessions=state.sessions
-    .filter(s=>s.date>=joined)
-    .sort((a,b)=>a.date.localeCompare(b.date));
-  const recs=sessions.map(s=>s.records[id]||{s:'a',le:false});
+  // Build the relevant record list. A session counts for this member if:
+  //   • the session is on or after their joined date (and missing = absent), OR
+  //   • the member has an explicit mark for it (even if before joined date —
+  //     they showed up, so it must count)
+  const allSessions=[...state.sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  const recs=[];
+  allSessions.forEach(s=>{
+    if(s.records[id])recs.push(s.records[id]);
+    else if(s.date>=joined)recs.push({s:'a',le:false});
+  });
   const total=recs.length;
   let p=0,l=0,e=0,a=0,x=0;
   recs.forEach(r=>{
